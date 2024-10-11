@@ -1,0 +1,21 @@
+{
+  "name": "e4c_be",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "start": "nodemon ./src/index.js",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "cors": "^2.8.5",
+    "e4c_be": "file:",
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "mysql2": "^3.10.0",
+    "nodemon": "^3.1.2"
+  }
+}
