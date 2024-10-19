@@ -1,19 +1,19 @@
 const con = require("../configdb/connectDB");
 const multer = require("multer");
 const path = require("path");
+const { v4: uuidv4 } = require("uuid"); // Cần cài đặt uuid bằng npm
 
-// Cấu hình nơi lưu trữ file ảnh
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
-    cb(null, "./src/uploads"); // Thư mục lưu trữ file ảnh
+    cb(null, "./src/uploads"); // Đường dẫn lưu tệp
   },
   filename: (req, file, cb) => {
-    cb(null, Date.now() + path.extname(file.originalname)); // Tạo tên file duy nhất
+    const uniqueSuffix = uuidv4(); // Tạo một UUID duy nhất
+    cb(null, `${uniqueSuffix}-${file.originalname}`); // Tên tệp mới
   },
 });
 
-// Middleware multer để xử lý file
-const upload = multer({ storage: storage });
+const upload = multer({ storage });
 
 class TopicController {
   async getAllTopic(req, res) {
@@ -80,6 +80,69 @@ class TopicController {
         message: "Topic added successfully",
         topicId: result.insertId,
       });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // API để thêm câu hỏi với file ảnh và file âm thanh
+  async addQuestion(req, res) {
+    try {
+      const { typeId, question, keyword, topicId, answers } = req.body;
+      console.log(req.body); // Để xem các trường văn bản
+      console.log(req.files);
+
+      // Xử lý tệp âm thanh câu hỏi nếu có
+      const questionAudio =
+        req.files.question && req.files.question.length > 0
+          ? req.files.question[0].filename
+          : null;
+
+      // Lưu câu hỏi vào database
+      const result = await insertQuestion(
+        typeId,
+        questionAudio || question, // Dùng tiêu đề câu hỏi hoặc file âm thanh
+        keyword || null, // Nếu không có keyword thì lưu null
+        topicId
+      );
+      const questionId = result.insertId;
+
+      //Kiểm tra nếu có đáp án trong request
+      if (answers && answers.length > 0) {
+        // Lưu từng đáp án và xử lý file ảnh/âm thanh nếu có
+        for (let i = 0; i < answers.length; i++) {
+          const answer = answers[i];
+
+          // Lấy tên tệp âm thanh từ req.files
+          const audioFile =
+            req.files[`answers[${i}][audio]`] &&
+            req.files[`answers[${i}][audio]`].length > 0
+              ? req.files[`answers[${i}][audio]`][0].filename
+              : null;
+
+          const imageFile =
+            req.files[`answers[${i}][image]`] &&
+            req.files[`answers[${i}][image]`].length > 0
+              ? req.files[`answers[${i}][image]`][0].filename
+              : null;
+          console.log("lặp ", audioFile);
+          try {
+            await insertAnswer(
+              questionId,
+              answer.text,
+              answer.isTrue,
+              audioFile,
+              imageFile
+            );
+          } catch (error) {
+            console.error("Error inserting answer: ", error.message);
+          }
+        }
+      }
+
+      res
+        .status(201)
+        .json({ message: "Question added successfully", questionId });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -186,6 +249,38 @@ function insertTopic(name, label, level, img) {
       }
       resolve(result);
     });
+  });
+}
+
+// Hàm để chèn câu hỏi mới vào database
+function insertQuestion(typeId, title, keyword, topicId) {
+  return new Promise((resolve, reject) => {
+    const sql = `INSERT INTO question (typeId, title, keyword, topicId) VALUES (?, ?, ?, ?)`;
+    con.query(sql, [typeId, title, keyword, topicId], (error, result) => {
+      if (error) {
+        reject(error);
+      } else {
+        resolve(result);
+      }
+    });
+  });
+}
+
+// Hàm để chèn đáp án vào database
+function insertAnswer(questionId, text, isTrue, audioSrc, img) {
+  return new Promise((resolve, reject) => {
+    const sql = `INSERT INTO answer (questionId, answer, isTrue, audioSrc, img) VALUES (?, ?, ?, ?, ?)`;
+    con.query(
+      sql,
+      [questionId, text, isTrue, audioSrc, img],
+      (error, result) => {
+        if (error) {
+          reject(error);
+        } else {
+          resolve(result);
+        }
+      }
+    );
   });
 }
 
