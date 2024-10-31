@@ -7,5 +7,6 @@ const upload = blogController.upload; //
 router.get("/list", blogController.findAll);
 router.get("/:id", blogController.findOneById);
 router.post("/", upload.single("avatar"), blogController.create);
+router.put("/status/:id", blogController.updateStatus);
 
 module.exports = router;

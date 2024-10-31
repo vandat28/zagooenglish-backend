@@ -3,17 +3,7 @@ var router = express.Router();
 
 const topicController = require("../controller/topic");
 const upload = topicController.upload; // Đảm bảo rằng bạn đã import đúng middleware Multer
-
-router.get("/", topicController.getAllTopic);
-router.get("/questions/:id", topicController.getQuestionsOfTopic);
-router.get("/list", topicController.getTopicsSameLevel);
-router.get("/:id", topicController.getTopic);
-
-// Route POST để thêm topic với file ảnh
-router.post("/", upload.single("avatar"), topicController.addTopic); // 'avatar' là tên field chứa file ảnh
 const numberOfAnswers = 15; // Số lượng đáp án bạn muốn
-
-// Tạo một mảng các trường upload
 const uploadFields = [
   { name: "question", maxCount: 1 }, // Chỉ cần một tệp cho câu hỏi
 ];
@@ -34,5 +24,16 @@ router.post(
   upload.fields(uploadFields),
   topicController.addQuestion
 );
+
+router.post("/update-active", topicController.updateActive);
+router.get("/", topicController.getAllTopic);
+router.get("/questions/:id", topicController.getQuestionsOfTopic);
+router.get("/list", topicController.getTopicsSameLevel);
+router.get("/:id", topicController.getTopic);
+
+// Route POST để thêm topic với file ảnh
+router.post("/", upload.single("avatar"), topicController.addTopic); // 'avatar' là tên field chứa file ảnh
+router.put("/:id", upload.single("avatar"), topicController.updateTopic);
+router.delete("/", topicController.deleteTopic);
 
 module.exports = router;

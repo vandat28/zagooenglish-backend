@@ -7,6 +7,8 @@ router.get("/list", userController.getAllUser);
 router.get("/:username", userController.getUser);
 router.post("/", userController.createUser);
 router.post("/login", userController.checkAccount);
-// router.put("/:id", userController);
 
+router.put("/updateFullName/:username", userController.updateFullName);
+
+router.put("/role/:username", userController.changeRole);
 module.exports = router;

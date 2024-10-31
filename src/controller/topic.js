@@ -89,8 +89,6 @@ class TopicController {
   async addQuestion(req, res) {
     try {
       const { typeId, question, keyword, topicId, answers } = req.body;
-      console.log(req.body); // Để xem các trường văn bản
-      console.log(req.files);
 
       // Xử lý tệp âm thanh câu hỏi nếu có
       const questionAudio =
@@ -125,7 +123,7 @@ class TopicController {
             req.files[`answers[${i}][image]`].length > 0
               ? req.files[`answers[${i}][image]`][0].filename
               : null;
-          console.log("lặp ", audioFile);
+
           try {
             await insertAnswer(
               questionId,
@@ -143,6 +141,69 @@ class TopicController {
       res
         .status(201)
         .json({ message: "Question added successfully", questionId });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async updateActive(req, res) {
+    try {
+      const { id, active } = req.body; // Lấy id và active từ yêu cầu
+
+      // Thực hiện việc cập nhật trong cơ sở dữ liệu
+      const result = await updateTopicActive(id, active);
+
+      // Kiểm tra xem có hàng nào được cập nhật không (affectedRows > 0)
+      if (result.affectedRows > 0) {
+        res.status(200).json({
+          message: "Active status updated successfully",
+          success: true,
+        });
+      } else {
+        res.status(404).json({
+          message: "Topic not found",
+          success: false,
+        });
+      }
+    } catch (error) {
+      // Trả về lỗi nếu có vấn đề xảy ra
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async deleteTopic(req, res) {
+    try {
+      const { id } = req.query; // Lấy id từ query params
+      const result = await removeTopic(id);
+
+      if (result.affectedRows > 0) {
+        res.status(200).json({
+          message: "Topic deleted successfully",
+          success: true,
+        });
+      } else {
+        res.status(404).json({
+          message: "Topic not found",
+          success: false,
+        });
+      }
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // API để cập nhật topic với file ảnh
+  async updateTopic(req, res) {
+    try {
+      const { name, label, level } = req.body;
+      const { id } = req.params;
+      const avatar = req.file ? req.file.filename : null; // Lấy tên file ảnh đã upload nếu có
+
+      const result = await updateTopic(id, name, label, level, avatar);
+      res.status(200).json({
+        message: "Topic updated successfully",
+        affectedRows: result.affectedRows, // Số hàng bị ảnh hưởng
+      });
     } catch (error) {
       res.status(500).json({ error: error.message });
     }
@@ -241,8 +302,8 @@ function findAnswersOfQuestion(id) {
 // Hàm để chèn topic mới vào database
 function insertTopic(name, label, level, img) {
   return new Promise((resolve, reject) => {
-    const sql = `INSERT INTO topic (name, label, levelId, img) VALUES (?, ?, ?, ?)`;
-    con.query(sql, [name, label, level, img], (error, result) => {
+    const sql = `INSERT INTO topic (name, label, levelId, img, active) VALUES (?, ?, ?, ?, ?)`;
+    con.query(sql, [name, label, level, img, 0], (error, result) => {
       if (error) {
         reject(error);
         return;
@@ -281,6 +342,56 @@ function insertAnswer(questionId, text, isTrue, audioSrc, img) {
         }
       }
     );
+  });
+}
+
+function updateTopicActive(id, active) {
+  return new Promise((resolve, reject) => {
+    const sql = `UPDATE topic SET active = ? WHERE id = ?`; // Câu lệnh SQL để cập nhật 'active'
+    con.query(sql, [active, id], (error, result) => {
+      if (error) {
+        reject(error); // Trả về lỗi nếu truy vấn thất bại
+        return;
+      }
+      resolve(result); // Trả về kết quả nếu thành công
+    });
+  });
+}
+
+function removeTopic(id) {
+  return new Promise((resolve, reject) => {
+    const sql = `DELETE FROM topic WHERE id = ?`; // Câu lệnh SQL để xóa topic
+    con.query(sql, [id], (error, result) => {
+      if (error) {
+        reject(error); // Trả về lỗi nếu truy vấn thất bại
+        return;
+      }
+      resolve(result); // Trả về kết quả nếu thành công
+    });
+  });
+}
+
+function updateTopic(id, name, label, level, img) {
+  return new Promise((resolve, reject) => {
+    // Nếu img không tồn tại, bỏ qua việc cập nhật cột img
+    let sql = `UPDATE topic SET name = ?, label = ?, levelId = ?`;
+    const params = [name, label, level];
+
+    if (img) {
+      sql += `, img = ?`;
+      params.push(img); // Nếu có ảnh, thêm img vào params
+    }
+
+    sql += ` WHERE id = ?`; // Điều kiện WHERE để cập nhật đúng hàng
+    params.push(id); // Thêm id vào cuối params
+
+    con.query(sql, params, (error, result) => {
+      if (error) {
+        reject(error);
+        return;
+      }
+      resolve(result);
+    });
   });
 }
 
