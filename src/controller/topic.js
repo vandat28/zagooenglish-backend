@@ -89,7 +89,7 @@ class TopicController {
   async addQuestion(req, res) {
     try {
       const { typeId, question, keyword, topicId, answers } = req.body;
-
+      console.log(answers);
       // Xử lý tệp âm thanh câu hỏi nếu có
       const questionAudio =
         req.files.question && req.files.question.length > 0
@@ -205,6 +205,96 @@ class TopicController {
         affectedRows: result.affectedRows, // Số hàng bị ảnh hưởng
       });
     } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  async deleteQuestionAndAnswers(req, res) {
+    try {
+      const { questionId } = req.params;
+
+      // Xóa đáp án liên quan đến câu hỏi
+      await new Promise((resolve, reject) => {
+        const sql = `DELETE FROM answer WHERE questionId = ?`;
+        con.query(sql, [questionId], (error, result) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        });
+      });
+
+      // Xóa câu hỏi
+      const result = await new Promise((resolve, reject) => {
+        const sql = `DELETE FROM question WHERE id = ?`;
+        con.query(sql, [questionId], (error, result) => {
+          if (error) {
+            reject(error);
+          } else {
+            resolve(result);
+          }
+        });
+      });
+
+      if (result.affectedRows === 0) {
+        return res.status(404).json({ message: "Question not found" });
+      }
+
+      res
+        .status(200)
+        .json({ message: "Question and related answers deleted successfully" });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+
+  // API sửa câu hỏi và đáp án
+  async updateQuestionAndAnswers(req, res) {
+    try {
+      const { questionId } = req.params;
+      const { typeId, question, keyword, topicId, answers } = req.body;
+
+      // Xử lý file âm thanh câu hỏi (nếu có)
+      const questionAudio = req.files?.question?.[0]?.filename || null;
+      console.log(questionAudio);
+      // Cập nhật câu hỏi
+      await new Promise((resolve, reject) => {
+        const sql = `UPDATE question SET typeId = ?, title = ?, keyword = ?, topicId = ? WHERE id = ?`;
+        con.query(
+          sql,
+          [typeId, questionAudio || question, keyword, topicId, questionId],
+          (error, result) => (error ? reject(error) : resolve(result))
+        );
+      });
+
+      if (answers && answers.length > 0) {
+        for (let i = 0; i < answers.length; i++) {
+          const answer = answers[i];
+
+          // Lấy tệp âm thanh và hình ảnh của đáp án
+          const audioFile =
+            req.files?.[`answers[${i}][audio]`]?.[0]?.filename || answer.audio;
+          const imageFile =
+            req.files?.[`answers[${i}][image]`]?.[0]?.filename || answer.image;
+
+          if (answer.id) {
+            // Cập nhật đáp án cũ
+            await new Promise((resolve, reject) => {
+              const sql = `UPDATE answer SET answer = ?, isTrue = ?, audioSrc = ?, img = ? WHERE id = ?`;
+              con.query(
+                sql,
+                [answer.text, answer.isTrue, audioFile, imageFile, answer.id],
+                (error, result) => (error ? reject(error) : resolve(result))
+              );
+            });
+          }
+        }
+      }
+
+      res.status(200).json({ message: "Câu hỏi và đáp án đã được cập nhật!" });
+    } catch (error) {
+      console.error(error);
       res.status(500).json({ error: error.message });
     }
   }

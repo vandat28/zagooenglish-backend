@@ -11,6 +11,7 @@ const uploadFields = [
 // Sử dụng vòng lặp để thêm các trường answers
 for (let i = 0; i < numberOfAnswers; i++) {
   uploadFields.push(
+    { name: `answers[${i}][id]`, maxCount: 1 },
     { name: `answers[${i}][text]`, maxCount: 1 },
     { name: `answers[${i}][isTrue]`, maxCount: 1 },
     { name: `answers[${i}][audio]`, maxCount: 1 },
@@ -23,6 +24,18 @@ router.post(
   // Sử dụng upload.fields với các trường đã tạo
   upload.fields(uploadFields),
   topicController.addQuestion
+);
+
+router.delete(
+  "/delete-question/:questionId",
+  // Sử dụng upload.fields với các trường đã tạo
+  topicController.deleteQuestionAndAnswers
+);
+
+router.put(
+  "/update-question/:questionId",
+  upload.fields(uploadFields),
+  topicController.updateQuestionAndAnswers
 );
 
 router.post("/update-active", topicController.updateActive);
