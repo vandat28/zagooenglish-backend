@@ -26,13 +26,16 @@ class BlogController {
 
     function findAll() {
       return new Promise((resolve, reject) => {
-        con.query(`SELECT * from blog`, function (error, result, fields) {
-          if (error) {
-            reject(error);
-            return;
+        con.query(
+          `SELECT * from blog order by id desc`,
+          function (error, result, fields) {
+            if (error) {
+              reject(error);
+              return;
+            }
+            resolve(result);
           }
-          resolve(result);
-        });
+        );
       });
     }
   }
